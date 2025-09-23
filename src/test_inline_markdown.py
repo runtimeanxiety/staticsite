@@ -1,5 +1,5 @@
 import unittest
-from inline_markdown import extract_markdown_images, extract_markdown_links, split_nodes_delimiter
+from inline_markdown import extract_markdown_images, extract_markdown_links, split_nodes_delimiter, split_nodes_image, split_nodes_link
 from textnode import TextNode, TextType
 
 class TestInlineMarkdown(unittest.TestCase):
@@ -88,6 +88,64 @@ class TestInlineMarkdown(unittest.TestCase):
     def test_extract_markdown_links_none(self):
         matches = extract_markdown_links("No links here!")
         self.assertListEqual([], matches)
+    
+    def test_split_images(self):
+        node = TextNode(
+            "This is text with an ![image](https://i.imgur.com/zjjcJKZ.png) and another ![second image](https://i.imgur.com/3elNhQu.png)",
+            TextType.TEXT,
+        )
+        new_nodes = split_nodes_image([node])
+        self.assertListEqual(
+            [
+                TextNode("This is text with an ", TextType.TEXT),
+                TextNode("image", TextType.IMAGE, "https://i.imgur.com/zjjcJKZ.png"),
+                TextNode(" and another ", TextType.TEXT),
+                TextNode(
+                    "second image", TextType.IMAGE, "https://i.imgur.com/3elNhQu.png"
+                ),
+            ],
+            new_nodes,
+        )
+    
+    def test_single_image(self):
+        node = TextNode("Here is ![alt](url.png)", TextType.TEXT)
+        result = split_nodes_image([node])
+        self.assertListEqual(
+            [
+                TextNode("Here is ", TextType.TEXT),
+                TextNode("alt", TextType.IMAGE, "url.png"),
+            ],
+            result,
+        )
+
+    def test_multiple_images(self):
+        node = TextNode("![one](url1) and ![two](url2)", TextType.TEXT)
+        result = split_nodes_image([node])
+        self.assertListEqual(
+            [
+                TextNode("", TextType.TEXT),
+                TextNode("one", TextType.IMAGE, "url1"),
+                TextNode(" and ", TextType.TEXT),
+                TextNode("two", TextType.IMAGE, "url2"),
+            ],
+            result,
+        )
+
+    def test_single_link(self):
+        node = TextNode("Click [here](url.com)", TextType.TEXT)
+        result = split_nodes_link([node])
+        self.assertListEqual(
+            [
+                TextNode("Click ", TextType.TEXT),
+                TextNode("here", TextType.LINK, "url.com"),
+            ],
+            result,
+        )
+
+    def test_no_links_or_images(self):
+        node = TextNode("Just plain text", TextType.TEXT)
+        self.assertEqual(split_nodes_image([node]), [node])
+        self.assertEqual(split_nodes_link([node]), [node])
 
 if __name__ == "__main__":
     unittest.main()
